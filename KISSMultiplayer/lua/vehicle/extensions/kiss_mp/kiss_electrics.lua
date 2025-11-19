@@ -14,6 +14,7 @@ local ignored_keys = {
   clutch_input = true,
   clutchRatio = true,
   parkingbrake = true,
+  parkingbrakelight = true,
   parkingbrake_input = true,
   steering = true,
   steering_input = true,
@@ -85,22 +86,44 @@ local ignored_keys = {
   tirePressureControl_activeGroupPressure = true,
   reverse_wigwag_L = true,
   reverse_wigwag_R = true,
+  reverselight_filament = true,
   highbeam_wigwag_L = true,
   highbeam_wigwag_R = true,
   lowhighbeam_signal_L = true,
   lowhighbeam_signal_R = true,
+  lowhighBrake_filament = true,
+  lowhighBrakeSignal_L_filament = true,
+  lowhighBrakeSignal_R_filament = true,
   brakelight_signal_L = true,
   brakelight_signal_R = true,
+  brakelight_filament = true,
+  brakeSignal_L_filament = true,
+  brakeSignal_R_filament = true,
   isYCBrakeActive = true,
   isTCBrakeActive = true,
   isABSBrakeActive = true,
   dseWarningPulse = true,
   dseRollingOver = true,
   dseRollOverStopped = true,
-  dseCrashStopped = true
+  dseCrashStopped = true,
+  potentialSpeed = true,
+  tailgateCoupler_notAttached = true
 }
 
 local electrics_handlers = {}
+
+local function sanitize_number(x)
+  if type(x) ~= 'number' then return nil end
+  -- filter NaN and infinities
+  if x ~= x then return nil end
+  if x == math.huge or x == -math.huge then return nil end
+  -- clamp to a safe range that fits in f32 and JSON
+  local MAX = 1e38
+  local MIN = -1e38
+  if x > MAX then return MAX end
+  if x < MIN then return MIN end
+  return x
+end
 
 local function ignore_key(key)
   ignored_keys[key] = true
@@ -132,11 +155,14 @@ local function send()
   }
   for key, value in pairs(electrics.values) do
     if not ignored_keys[key] and type(value) == 'number' then
-      if prev_electrics[key] ~= value then
-        data.diff[key] = value
-        diff_count = diff_count + 1
+      local sv = sanitize_number(value)
+      if sv ~= nil then
+        if prev_electrics[key] ~= sv then
+          data.diff[key] = sv
+          diff_count = diff_count + 1
+        end
+        prev_electrics[key] = sv
       end
-      prev_electrics[key] = value
     end
   end
   local data = {
