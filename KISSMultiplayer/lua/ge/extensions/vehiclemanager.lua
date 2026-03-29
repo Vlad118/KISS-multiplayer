@@ -479,6 +479,30 @@ local function detach_coupler(data)
   end
 end
 
+local function set_position(data)
+  local id = M.id_map[data[1] or -1] or -1
+  local vehicle = be:getObjectByID(id)
+  if vehicle then
+    vehicle:setPositionNoPhysicsReset(Point3F(data[2][1], data[2][2], data[2][3]))
+  end
+end
+
+local function set_position_rotation(data)
+  local id = M.id_map[data[1] or -1] or -1
+  local vehicle = be:getObjectByID(id)
+  if vehicle then
+    vehicle:setPosRot(data[2][1], data[2][2], data[2][3], data[3][1], data[3][2], data[3][3], data[3][4])
+  end
+end
+
+local function reset_in_place(data)
+  local id = M.id_map[data or -1] or -1
+  local vehicle = be:getObjectByID(id)
+  if vehicle then
+    vehicle:reset()
+  end
+end
+
 local function onVehicleSpawned(id)
   if not network.connection.connected then return end
   local vehicle = be:getObjectByID(id)
@@ -583,5 +607,9 @@ M.attach_coupler = attach_coupler
 M.detach_coupler = detach_coupler
 M.attach_coupler_inner = attach_coupler_inner
 M.detach_coupler_inner = detach_coupler_inner
+
+M.set_position = set_position
+M.set_position_rotation = set_position_rotation
+M.reset_in_place = reset_in_place
 
 return M

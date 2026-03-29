@@ -110,6 +110,11 @@ pub enum ServerCommand {
     FilePart(String, Vec<u8>, u32, u32, u32),
     VoiceChatPacket(u32, [f32; 3], Vec<u8>),
     Pong(f64),
+
+    // public server commands
+    VehicleSetPosition(u32, [f32; 3]),
+    VehicleSetPositionRotation(u32, [f32; 3], [f32; 4]),
+    VehicleResetInPlace(u32),
 }
 
 pub fn init_logging()

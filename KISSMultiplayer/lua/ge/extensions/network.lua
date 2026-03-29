@@ -1,6 +1,7 @@
 local M = {}
 
 M.VERSION_STR = "0.7.0"
+M.is_server_public = false
 
 M.downloads = {}
 M.downloading = false
@@ -124,12 +125,22 @@ local function check_lua(l)
 end
 
 local function handle_lua(data)
+  if M.is_server_public then 
+      print("Blocked arbitrary Lua command from public server.")
+      return 
+    end
+
   if check_lua(data) then
     Lua:queueLuaCommand(data)
   end
 end
 
 local function handle_vehicle_lua(data)
+  if M.is_server_public then 
+    print("Blocked arbitrary vehicle Lua command from public server.")
+    return 
+  end
+
   local id = data[1]
   local lua = data[2]
   local id = vehiclemanager.id_map[id or -1] or 0
@@ -173,6 +184,10 @@ local function onExtensionLoaded()
   message_handlers.CouplerAttached = vehiclemanager.attach_coupler
   message_handlers.CouplerDetached = vehiclemanager.detach_coupler
   message_handlers.ElectricsUndefinedUpdate = vehiclemanager.electrics_diff_update
+
+  message_handlers.VehicleSetPosition = vehiclemanager.set_position
+  message_handlers.VehicleSetPositionRotation = vehiclemanager.set_position_rotation
+  message_handlers.VehicleResetInPlace = vehiclemanager.reset_in_place
 end
 
 local function send_data(raw_data, reliable)
@@ -255,7 +270,9 @@ local function change_map(map)
   end
 end
 
-local function connect(addr, player_name)
+local function connect(addr, player_name, is_public)
+  M.is_server_public = is_public or false
+
   if M.connection.connected then
     disconnect()
   end
@@ -340,13 +357,20 @@ local function connect(addr, player_name)
     print(k.." "..v)
   end
   if #missing_mods > 0 then
-    -- Request mods
-    send_data(
-      {
-        RequestMods = missing_mods
-      },
-      true
-    )
+    -- Do not allow public servers to force mod downloads
+    if M.is_server_public then
+      kissui.chat.add_message("Cannot auto-download mods from public servers")
+      disconnect()
+      return
+    else
+      -- Request mods when using direct IP
+      send_data(
+        {
+          RequestMods = missing_mods
+        },
+        true
+      )
+    end
   end
   vehiclemanager.loading_map = true
   if #missing_mods == 0 then

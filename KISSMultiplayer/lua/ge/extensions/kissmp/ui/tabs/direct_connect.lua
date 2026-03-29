@@ -9,7 +9,7 @@ local function draw()
     local addr = ffi.string(kissui.addr)
     local player_name = ffi.string(kissui.player_name)
     kissconfig.save_config()
-    network.connect(addr, player_name)
+    network.connect(addr, player_name, false)
   end
 end
 

@@ -43,7 +43,7 @@ local function host_server()
   local b, _, _  = http.request("http://127.0.0.1:3693/host/"..jsonEncode(config))
   if b == "ok" then
     local player_name = ffi.string(kissui.player_name)
-    network.connect("127.0.0.1:"..port, player_name)
+    network.connect("127.0.0.1:"..port, player_name, false)
   end
 end
 

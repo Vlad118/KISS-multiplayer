@@ -187,7 +187,7 @@ local function draw(dt)
       if imgui.Button("Connect###connect_button_" .. tostring(server_count)) then
         kissconfig.save_config()
         local player_name = ffi.string(kissui.player_name)
-        network.connect(addr, player_name)
+        network.connect(addr, player_name, true)
       end
 
       local in_favorites_list = kissui.tabs.favorites.favorite_servers[addr] ~= nil

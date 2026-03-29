@@ -16,6 +16,11 @@ pub enum LuaCommand {
     SendVehicleLua(u32, String),
     Kick(u32, String),
     SpawnVehicle(VehicleData, Option<u32>),
+
+    // (client_id, server_id, ...)
+    VehicleSetPosition(u32, u32, [f32; 3]),
+    VehicleSetPositionRotation(u32, u32, [f32; 3], [f32; 4]),
+    VehicleResetInPlace(u32, u32),
 }
 
 struct LuaTransform(Transform);
@@ -96,14 +101,9 @@ impl rlua::UserData for Vehicle {
             let sender: MpscChannelSender = globals.get("MPSC_CHANNEL_SENDER")?;
             sender
                 .0
-                .send(LuaCommand::SendLua(
+                .send(LuaCommand::VehicleResetInPlace(
                     this.data.owner.unwrap_or(0),
-                    format!(
-                        "be:getObjectByID({}):reset()",
-                        this.data.in_game_id
-                    ),
-                ))
-                .unwrap();
+                    this.data.server_id)).unwrap();
             Ok(())
         });
         methods.add_method(
@@ -113,14 +113,9 @@ impl rlua::UserData for Vehicle {
                 let sender: MpscChannelSender = globals.get("MPSC_CHANNEL_SENDER")?;
                 sender
                     .0
-                    .send(LuaCommand::SendLua(
+                    .send(LuaCommand::VehicleSetPosition(
                         this.data.owner.unwrap_or(0),
-                        format!(
-                            "be:getObjectByID({}):setPositionNoPhysicsReset(Point3F({}, {}, {}))",
-                            this.data.in_game_id, x, y, z
-                        ),
-                    ))
-                    .unwrap();
+                        this.data.server_id, [x, y, z])).unwrap();
                 Ok(())
             },
         );
@@ -131,14 +126,9 @@ impl rlua::UserData for Vehicle {
                 let sender: MpscChannelSender = globals.get("MPSC_CHANNEL_SENDER")?;
                 sender
                     .0
-                    .send(LuaCommand::SendLua(
+                    .send(LuaCommand::VehicleSetPositionRotation(
                         this.data.owner.unwrap_or(0),
-                        format!(
-                            "be:getObjectByID({}):setPosRot({}, {}, {}, {}, {}, {}, {})",
-                            this.data.in_game_id, x, y, z, xr, yr, zr, w
-                        ),
-                    ))
-                    .unwrap();
+                        this.data.server_id, [x, y, z], [xr, yr, zr, w])).unwrap();
                 Ok(())
             },
         );
@@ -301,6 +291,21 @@ impl Server {
                 }
                 SpawnVehicle(data, owner) => {
                     let _ = self.spawn_vehicle(owner, data);
+                }
+                VehicleSetPosition(client_id, vehicle_id, pos) => {
+                    if let Some(conn) = self.connections.get_mut(&client_id) {
+                        let _ = conn.ordered.send(ServerCommand::VehicleSetPosition(vehicle_id, pos)).await;
+                    }
+                }
+                VehicleSetPositionRotation(client_id, vehicle_id, pos, rot) => {
+                    if let Some(conn) = self.connections.get_mut(&client_id) {
+                        let _ = conn.ordered.send(ServerCommand::VehicleSetPositionRotation(vehicle_id, pos, rot)).await;
+                    }
+                }
+                VehicleResetInPlace(client_id, vehicle_id) => {
+                    if let Some(conn) = self.connections.get_mut(&client_id) {
+                        let _ = conn.ordered.send(ServerCommand::VehicleResetInPlace(vehicle_id)).await;
+                    }
                 }
             }
         }
