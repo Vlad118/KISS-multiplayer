@@ -111,11 +111,10 @@ jobs:
     # Zip everything
     - name: Package Zip Files
       run: |
-        # Zip the KISSMultiplayer folder and put it in staging
-        zip -r release_staging/KISSMultiplayer.zip KISSMultiplayer
+        cd KISSMultiplayer
+        zip -r ../release_staging/KISSMultiplayer.zip .
         
-        # Navigate to staging and zip the final release file
-        cd release_staging
+        cd ../release_staging
         zip -r ../KissMP_${{ github.ref_name }}.zip *
 
     # Publish release
