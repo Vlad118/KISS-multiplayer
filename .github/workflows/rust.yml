@@ -3,6 +3,7 @@ name: Rust
 on:
   push:
     branches: [ master ]
+    tags: [ 'v*' ] # Tag trigger for releases
   pull_request:
     branches: [ master ]
 
@@ -77,3 +78,49 @@ jobs:
         name: build_results_master_server
         path: |
           ./target/release/kissmp-master
+
+  release:
+    needs: [build_bridge, build_server, build_master]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v5
+
+    # Download Linux artifacts
+    - uses: actions/download-artifact@v4
+      with:
+        name: build_results_bridge-ubuntu-latest
+        path: release_staging/linux
+    - uses: actions/download-artifact@v4
+      with:
+        name: build_results_server-ubuntu-latest
+        path: release_staging/linux
+
+    # Download Windows artifacts
+    - uses: actions/download-artifact@v4
+      with:
+        name: build_results_bridge-windows-latest
+        path: release_staging/windows
+    - uses: actions/download-artifact@v4
+      with:
+        name: build_results_server-windows-latest
+        path: release_staging/windows
+
+    # Zip everything
+    - name: Package Zip Files
+      run: |
+        # Zip the KISSMultiplayer folder and put it in staging
+        zip -r release_staging/KISSMultiplayer.zip KISSMultiplayer
+        
+        # Navigate to staging and zip the final release file
+        cd release_staging
+        zip -r ../KissMP_${{ github.ref_name }}.zip *
+
+    # Publish release
+    - name: Publish GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: KissMP_${{ github.ref_name }}.zip
+        name: Release ${{ github.ref_name }}
